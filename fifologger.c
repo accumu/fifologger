@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: $
+ * fifologger $Id: fifologger.c,v 1.1 2001/10/27 21:10:45 project Exp project $
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax. Changes file when appropriate.
  *
@@ -89,6 +89,8 @@ mainloop(void) {
         if (s == 0) {
             sleep(1);
         } else {
+            /* Doesn't handle return values, don't know if they're worth much
+               though.. */
             writeline(buf);
         }
     }
