@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.4 2001/11/17 16:47:39 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.5 2001/11/17 16:51:41 project Exp project $
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax. Open+close for each read for maximum flexibility. The overhead
  * is insignificant compared to the other things it does to produce the line.
@@ -64,7 +64,7 @@ writeline(char *line) {
     tim = localtime(&t);
 
     strftime(buf, PATH_MAX, outformat, tim);
-    outf = fopen(buf, "w+");
+    outf = fopen(buf, "a");
     if (!outf) {
         error(LOG_CRIT, "Unable to open outfile %s", buf);
         return 1;
