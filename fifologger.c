@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.3 2001/11/17 16:42:10 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.4 2001/11/17 16:47:39 project Exp project $
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax. Open+close for each read for maximum flexibility. The overhead
  * is insignificant compared to the other things it does to produce the line.
@@ -24,6 +24,7 @@
 FILE *fifo;
 char *fifoname;
 char *outformat;
+int dolog = 1;
 
 void
 error(int lvl, char *str, char *arg) {
@@ -31,7 +32,7 @@ error(int lvl, char *str, char *arg) {
 
     snprintf(buf, STRSIZE, "[%%s] %s: %s", str, strerror(errno));
     syslog(lvl, buf, fifoname, arg);
-    if (stderr) {
+    if (dolog) {
         strcat(buf, "\n");
         fprintf(stderr, buf, fifoname, arg);
     }
@@ -109,7 +110,7 @@ main(int argc, char *argv[]) {
     fclose(stdin);
     fclose(stdout);
     fclose(stderr);
-    stdin = stdout = stderr = NULL;
+    dolog = 0;
     mainloop();
     closelog();
 
