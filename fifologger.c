@@ -1,7 +1,9 @@
 /*
- * fifologger $Id: fifologger.c,v 1.1 2001/10/27 21:10:45 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.2 2001/10/27 21:29:06 project Exp project $
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
- * syntax. Changes file when appropriate.
+ * syntax. Open+close for each read for maximum flexibility. The overhead
+ * is insignificant compared to the other things it does to produce the line.
+ * <bla bla>
  *
  * Suitable format: xferlog.%Y%m%d  (xferlog-20011027)
  *
@@ -22,8 +24,6 @@
 FILE *fifo;
 char *fifoname;
 char *outformat;
-char currout[PATH_MAX];
-FILE *outf = NULL;
 
 void
 error(int lvl, char *str, char *arg) {
@@ -52,29 +52,26 @@ openfifo(char *name) {
 
 int
 writeline(char *line) {
-    char buf[PATH_MAX];
+    char buf[PATH_MAX+1];
     time_t t;
     struct tm *tim;
+    FILE *outf = NULL;
 
     t = time(NULL);
     tim = localtime(&t);
 
     strftime(buf, PATH_MAX, outformat, tim);
-    if (!outf || strcmp(buf, currout)) {
-        strcpy(currout, buf);
-        if (outf)
-            fclose(outf);
-        outf = fopen(currout, "w+");
-        if (!outf) {
-            error(LOG_CRIT, "Unable to open outfile %s", currout);
-            return 1;
-        }
+    outf = fopen(buf, "w+");
+    if (!outf) {
+        error(LOG_CRIT, "Unable to open outfile %s", buf);
+        return 1;
     }
     if (fputs(line, outf) == EOF) {
-        error(LOG_CRIT, "Unable to write to %s", currout);
+        error(LOG_CRIT, "Unable to write to %s", buf);
+        fclose(outf);
         return 2;
     }
-    fflush(outf);
+    fclose(outf);
 
     return 0;
 }
