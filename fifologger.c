@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.2 2001/10/27 21:29:06 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.3 2001/11/17 16:42:10 project Exp project $
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax. Open+close for each read for maximum flexibility. The overhead
  * is insignificant compared to the other things it does to produce the line.
@@ -29,10 +29,12 @@ void
 error(int lvl, char *str, char *arg) {
     char buf[STRSIZE];
 
-    sprintf(buf, "[%%s] %s: %s", str, strerror(errno));
+    snprintf(buf, STRSIZE, "[%%s] %s: %s", str, strerror(errno));
     syslog(lvl, buf, fifoname, arg);
-    strcat(buf, "\n");
-    fprintf(stderr, buf, fifoname, arg);
+    if (stderr) {
+        strcat(buf, "\n");
+        fprintf(stderr, buf, fifoname, arg);
+    }
 }
 
 FILE *
@@ -78,7 +80,7 @@ writeline(char *line) {
 
 void
 mainloop(void) {
-    char *buf = malloc(STRSIZE);
+    char *buf = malloc(STRSIZE+1);
     char *s;
 
     while (1) {
@@ -96,12 +98,18 @@ mainloop(void) {
 int
 main(int argc, char *argv[]) {
     if (argc != 3) {
-        printf("Usage: %s: <fifo> <outformat>\n", argv[0]);
+        printf("Usage: %s: <fifo> <outformat>\n\n", argv[0]);
+        printf("Don't use any relative paths (will cd to /).\n");
         exit(0);
     }
+    chdir("/");
     openlog("fifologger", LOG_PID, LOG_DAEMON);
     fifo = openfifo(argv[1]);
     outformat = argv[2];
+    fclose(stdin);
+    fclose(stdout);
+    fclose(stderr);
+    stdin = stdout = stderr = NULL;
     mainloop();
     closelog();
 
