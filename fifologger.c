@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.6 2001/11/17 16:57:40 project Exp $
+ * fifologger $Id: fifologger.c,v 1.7 2004/09/18 16:24:30 project Exp project $
  *
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax.
@@ -14,7 +14,9 @@
  *                       each fgets.
  */
 
-/* Enable large file API, just in case ;) */
+/* Enable large file API, it's needed */
+#define _FILE_OFFSET_BITS 64
+#define _LARGEFILE_SOURCE 1
 #define _LARGE_FILES 1
 
 #include <stdio.h>
@@ -35,8 +37,8 @@
 
 /* RCS version strings and stuff, to be used with in help text or when running
    ident on the binary */
-static const char rcsid[] = "$Id$";
-static const char rcsrev[] = "$Revision$";
+static const char rcsid[] = "$Id: fifologger.c,v 1.7 2004/09/18 16:24:30 project Exp project $";
+static const char rcsrev[] = "$Revision: 1.7 $";
 
 FILE *fifo;
 char *fifoname;
