@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.7 2004/09/18 16:24:30 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.9 2010/04/07 11:22:02 nikke Exp $
  *
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax.
@@ -32,13 +32,16 @@
 
 #define STRSIZE 32768
 
-/* Interval to fflush() output file */
+/* Interval between forced fflush() of output file */
 #define OUT_SYNC_INTERVAL 60
+
+/* Wait this long for more input, then flush output file */
+#define OUT_SYNC_DELAY 10
 
 /* RCS version strings and stuff, to be used with in help text or when running
    ident on the binary */
-static const char rcsid[] = "$Id: fifologger.c,v 1.7 2004/09/18 16:24:30 project Exp project $";
-static const char rcsrev[] = "$Revision: 1.7 $";
+static const char rcsid[] = "$Id: fifologger.c,v 1.9 2010/04/07 11:22:02 nikke Exp $";
+static const char rcsrev[] = "$Revision: 1.9 $";
 
 FILE *fifo;
 char *fifoname;
@@ -46,9 +49,14 @@ char *outformat;
 int dolog = 1;
 
 void
-sighandler(int signum) {
+exithandler(int signum) {
     fflush(NULL);
     exit(1);
+}
+
+void
+alarmhandler(int signum) {
+    fflush(NULL);
 }
 
 void
@@ -133,7 +141,9 @@ mainloop(void) {
     char *s;
 
     while (1) {
+        alarm(OUT_SYNC_DELAY);
         s = fgets(buf, STRSIZE, fifo);
+        alarm(0);
         if (s == 0) {
             sleep(1);
         } else {
@@ -146,6 +156,8 @@ mainloop(void) {
 
 int
 main(int argc, char *argv[]) {
+    struct sigaction sa;
+
     if (argc != 3) {
         printf("fifologger %s\n", rcsrev);
         printf("Usage: %s: <fifo> <outformat>\n\n", argv[0]);
@@ -153,11 +165,36 @@ main(int argc, char *argv[]) {
         exit(0);
     }
 
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
     /* Trap some standard signals so we can fflush() the outfile on exit */
-    signal(SIGHUP, sighandler);
-    signal(SIGINT, sighandler);
-    signal(SIGQUIT, sighandler);
-    signal(SIGTERM, sighandler);
+    sa.sa_handler = exithandler;
+    if(sigaction(SIGHUP, &sa, NULL)) {
+        perror("sigaction");
+        exit(1);
+    }
+    if(sigaction(SIGINT, &sa, NULL)) {
+        perror("sigaction");
+        exit(1);
+    }
+    if(sigaction(SIGTERM, &sa, NULL)) {
+        perror("sigaction");
+        exit(1);
+    }
+    if(sigaction(SIGQUIT, &sa, NULL)) {
+        perror("sigaction");
+        exit(1);
+    }
+
+    /* An alarm handler that flushes the output stream if we get no
+       action for a while */
+    sa.sa_handler = alarmhandler;
+    sa.sa_flags = SA_RESTART; /* To avoid packet loss in fgets() */
+    if(sigaction(SIGALRM, &sa, NULL)) {
+        perror("sigaction");
+        exit(1);
+    }
 
     chdir("/");
     openlog("fifologger", LOG_PID, LOG_DAEMON);
