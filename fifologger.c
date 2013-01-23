@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.9 2010/04/07 11:22:02 nikke Exp $
+ * fifologger $Id: fifologger.c,v 1.9 2010/04/07 14:58:40 project Exp project $
  *
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax.
@@ -40,7 +40,7 @@
 
 /* RCS version strings and stuff, to be used with in help text or when running
    ident on the binary */
-static const char rcsid[] = "$Id: fifologger.c,v 1.9 2010/04/07 11:22:02 nikke Exp $";
+static const char rcsid[] = "$Id: fifologger.c,v 1.9 2010/04/07 14:58:40 project Exp project $";
 static const char rcsrev[] = "$Revision: 1.9 $";
 
 FILE *fifo;
@@ -196,7 +196,9 @@ main(int argc, char *argv[]) {
         exit(1);
     }
 
-    chdir("/");
+    if(chdir("/") < 0) {
+        perror("chdir /");
+    }
     openlog("fifologger", LOG_PID, LOG_DAEMON);
     fifo = openfifo(argv[1]);
     outformat = argv[2];
