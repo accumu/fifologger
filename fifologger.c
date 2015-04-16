@@ -1,5 +1,5 @@
 /*
- * fifologger $Id: fifologger.c,v 1.10 2013/01/23 22:05:44 project Exp project $
+ * fifologger $Id: fifologger.c,v 1.11 2013/01/23 22:08:16 project Exp project $
  *
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax.
@@ -33,14 +33,14 @@
 #define STRSIZE 32768
 
 /* Interval between forced fflush() of output file */
-#define OUT_SYNC_INTERVAL 60
+#define OUT_SYNC_INTERVAL 10
 
 /* Wait this long for more input, then flush output file */
 #define OUT_SYNC_DELAY 10
 
 /* RCS version strings and stuff, to be used with in help text or when running
    ident on the binary */
-static const char rcsid[] = "$Id: fifologger.c,v 1.10 2013/01/23 22:05:44 project Exp project $";
+static const char rcsid[] = "$Id: fifologger.c,v 1.11 2013/01/23 22:08:16 project Exp project $";
 
 FILE *fifo;
 char *fifoname;
