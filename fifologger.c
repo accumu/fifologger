@@ -146,11 +146,14 @@ writedata(char *ptr, ssize_t size) {
         hrtim.tm_min=0;
         outfclosetime = mktime(&hrtim)+3600;
     }
-    if (fwrite(ptr, size, 1, outf) != 1) {
-        error(LOG_CRIT, "Failed to write to outfile %s", outformat);
-        fclose(outf);
-        outf=NULL;
-        return 2;
+
+    if(size > 0) {
+	if (fwrite(ptr, size, 1, outf) != 1) {
+	    error(LOG_CRIT, "Failed to write to outfile %s", outformat);
+	    fclose(outf);
+	    outf=NULL;
+	    return 2;
+	}
     }
 
     if(!flushoutfile(outf, t)) {
@@ -185,15 +188,13 @@ mainloop(void) {
 	}
 	else if(rc == 0) {
 	    /* Timeout */
-	    time_t t = time(NULL);
-	    flushoutfile(NULL, t);
+	    writedata(NULL, 0); /* Flush/reopen outfile if needed */
 	    continue;
 	}
 
 	if(fds.revents == POLLHUP) {
 	    /* No writer attached to fifo */
-	    time_t t = time(NULL);
-	    flushoutfile(NULL, t); /* We might have pending data */
+	    writedata(NULL, 0); /* Flush/reopen outfile if needed */
 	    sleep(OUT_SYNC_INTERVAL); /* To avoid busy-error-looping */
 	    continue;
 	}
@@ -216,6 +217,9 @@ mainloop(void) {
 	rsize = read(fifo, buf, sizeof(buf));
 
 	if(rsize < 0) {
+	    if(errno == EAGAIN || errno == EWOULDBLOCK) {
+		continue;
+	    }
 	    error(LOG_ERR, "read() %s", "failed");
 	    sleep(OUT_SYNC_INTERVAL); /* To avoid busy-error-looping */
 	    continue;
