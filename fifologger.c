@@ -35,6 +35,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <pwd.h>
+#include <grp.h>
 
 
 #define STRSIZE 32768
@@ -47,9 +49,11 @@
 static const char rcsid[] = "$Id$";
 
 /* Global variables are sooo elegant ;-) */
-int fifo;
-char *fifoname;
-char *outformat;
+int debug = 0;
+int verbose = 0;
+int fifo = -1;
+char *fifoname = NULL;
+char *outformat = NULL;
 int dolog = 1;
 time_t outflastflush = 0;
 
@@ -76,7 +80,6 @@ openfifo(char *name) {
     int f;
     struct stat st;
 
-    fifoname = name;
     f = open(name, O_RDONLY|O_NONBLOCK);
     if (f < 0) {
         error(LOG_ERR, "Unable to open input fifo %s", name);
@@ -236,13 +239,78 @@ mainloop(void) {
 int
 main(int argc, char *argv[]) {
     struct sigaction sa;
+    char * runuser = NULL;
+    int opt;
 
-    if (argc != 3) {
-        printf("fifologger %s\n", rcsid);
-        printf("Usage: %s: <fifo> <outformat>\n\n", argv[0]);
-        printf("Don't use any relative paths (will cd to /).\n");
-        exit(0);
+    while ((opt = getopt(argc, argv, "u:dv")) != -1) {
+	switch (opt) {
+	    case 'u':
+		runuser = optarg;
+		break;
+	    case 'd':
+		debug = 1;
+		break;
+	    case 'v':
+		verbose = 1;
+		break;
+	    default:
+		fprintf(stderr, "%s %s\n", argv[0], rcsid);
+		fprintf(stderr, "Usage: %s [-u username] [-d] [-v]  <fifo> <outformat>\n", argv[0]);
+		fprintf(stderr, "          -u username - run as username\n");
+		fprintf(stderr, "          -d - debug/donotdetach\n");
+		fprintf(stderr, "          -v - verbose\n");
+		exit(0);
+	}
     }
+
+    if(geteuid() != 0) {
+       if(runuser != NULL) {
+	   fprintf(stderr, "FATAL: Can only specify -u runuser if started as root\n");
+	   exit(1);
+       }
+    }
+    else {
+	struct passwd *pwd;
+
+	if(runuser == NULL) {
+	    fprintf(stderr, "FATAL: -u runuser required when started as root\n");
+	    exit(1);
+	}
+	pwd = getpwnam(runuser);
+	if (pwd == NULL) {
+	    fprintf(stderr, "FATAL: user %s not found\n", runuser);
+	    exit(1);
+	}
+	if (initgroups(runuser, pwd->pw_gid) < 0
+		|| setgid(pwd->pw_gid) < 0
+		|| setuid(pwd->pw_uid) < 0)
+	{
+	    perror("unable to drop privilege");
+	    exit(1);
+	}
+    }
+
+    if(argc != optind+2) {
+	fprintf(stderr, "FATAL: Expected exactly 2 arguments after options\n");
+	exit(1);
+    }
+
+    fifoname = argv[optind];
+    outformat = argv[optind+1];
+
+    if(fifoname[0] != '/' || outformat[0] != '/') {
+	fprintf(stderr, "FATAL: Expected absolute paths\n");
+	exit(1);
+    }
+
+    if(!debug) {
+	if(daemon(0, 0) != 0) {
+	    perror("daemon() failed");
+	    exit(1);
+	}
+    }
+
+    openlog("fifologger", LOG_PID, LOG_DAEMON);
 
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -250,32 +318,28 @@ main(int argc, char *argv[]) {
     /* Trap some standard signals so we can fflush() the outfile on exit */
     sa.sa_handler = exithandler;
     if(sigaction(SIGHUP, &sa, NULL)) {
+        error(LOG_ERR, "sicaction() failed for %s", "SIGHUP");
         perror("sigaction");
         exit(1);
     }
     if(sigaction(SIGINT, &sa, NULL)) {
-        perror("sigaction");
+        error(LOG_ERR, "sicaction() failed for %s", "SIGINT");
         exit(1);
     }
     if(sigaction(SIGTERM, &sa, NULL)) {
-        perror("sigaction");
+        error(LOG_ERR, "sicaction() failed for %s", "SIGTERM");
         exit(1);
     }
     if(sigaction(SIGQUIT, &sa, NULL)) {
-        perror("sigaction");
+        error(LOG_ERR, "sicaction() failed for %s", "SIGQUIT");
         exit(1);
     }
 
-    if(chdir("/") < 0) {
-        perror("chdir /");
-    }
-    openlog("fifologger", LOG_PID, LOG_DAEMON);
-    fifo = openfifo(argv[1]);
-    outformat = argv[2];
+    fifo = openfifo(fifoname);
     fclose(stdin);
     fclose(stdout);
     fclose(stderr);
-    dolog = 0;
+    //dolog = 0;
     mainloop();
     closelog();
 
