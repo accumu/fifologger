@@ -54,8 +54,7 @@ int verbose = 0;
 int fifo = -1;
 char *fifoname = NULL;
 char *outformat = NULL;
-int dolog = 1;
-time_t outflastflush = 0;
+int printerrors = 1;
 
 void
 exithandler(int signum) {
@@ -69,7 +68,7 @@ error(int lvl, char *str, char *arg) {
 
     snprintf(buf, STRSIZE, "[%%s] %s: errno=%s", str, strerror(errno));
     syslog(lvl, buf, fifoname, arg);
-    if (dolog) {
+    if (printerrors) {
         strcat(buf, "\n");
         fprintf(stderr, buf, fifoname, arg);
     }
@@ -104,22 +103,10 @@ openfifo(char *name) {
 
 
 int
-flushoutfile(FILE * file, time_t t) {
-    if(outflastflush+OUT_SYNC_INTERVAL < t) {
-        if(fflush(file) != 0) {
-	    return 0;
-	}
-        outflastflush=t;
-    }
-
-    return 1;
-}
-
-
-int
 writedata(char *ptr, ssize_t size) {
     time_t t;
     static FILE *outf = NULL;
+    static time_t outflastflush = 0;
     static time_t outfclosetime = 0;
 
     t = time(NULL);
@@ -159,11 +146,14 @@ writedata(char *ptr, ssize_t size) {
 	}
     }
 
-    if(!flushoutfile(outf, t)) {
-	error(LOG_CRIT, "Failed to flush outfile %s", outformat);
-	fclose(outf);
-	outf=NULL;
-	return 3;
+    if(outflastflush+OUT_SYNC_INTERVAL < t) {
+        if(fflush(outf) != 0) {
+	    error(LOG_CRIT, "Failed to flush outfile %s", outformat);
+	    fclose(outf);
+	    outf=NULL;
+	    return 3;
+	}
+        outflastflush=t;
     }
 
     return 0;
@@ -336,10 +326,12 @@ main(int argc, char *argv[]) {
     }
 
     fifo = openfifo(fifoname);
-    fclose(stdin);
-    fclose(stdout);
-    fclose(stderr);
-    //dolog = 0;
+    if(!verbose) {
+	printerrors = 0;
+	fclose(stdin);
+	fclose(stdout);
+	fclose(stderr);
+    }
     mainloop();
     closelog();
 
