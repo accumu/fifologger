@@ -326,20 +326,20 @@ main(int argc, char *argv[]) {
     /* Trap some standard signals so we can fflush() the outfile on exit */
     sa.sa_handler = exithandler;
     if(sigaction(SIGHUP, &sa, NULL)) {
-        error(LOG_ERR, "sicaction() failed for %s", "SIGHUP");
+        error(LOG_ERR, "sigaction() failed for %s", "SIGHUP");
         perror("sigaction");
         exit(1);
     }
     if(sigaction(SIGINT, &sa, NULL)) {
-        error(LOG_ERR, "sicaction() failed for %s", "SIGINT");
+        error(LOG_ERR, "sigaction() failed for %s", "SIGINT");
         exit(1);
     }
     if(sigaction(SIGTERM, &sa, NULL)) {
-        error(LOG_ERR, "sicaction() failed for %s", "SIGTERM");
+        error(LOG_ERR, "sigaction() failed for %s", "SIGTERM");
         exit(1);
     }
     if(sigaction(SIGQUIT, &sa, NULL)) {
-        error(LOG_ERR, "sicaction() failed for %s", "SIGQUIT");
+        error(LOG_ERR, "sigaction() failed for %s", "SIGQUIT");
         exit(1);
     }
 
