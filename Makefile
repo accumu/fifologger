@@ -19,13 +19,13 @@ uname := $(shell uname)
 
 ifeq ($(uname),Linux)
 	CC := gcc
-	CFLAGS := -O -Wall
+	CFLAGS := -g -O -Wall -DGIT_SOURCE_DESC='"$(shell git describe --tags --always --dirty)"'
+
 else
-	CFLAGS := -O
+	CFLAGS := -g -O
 endif
 
 all: fifologger
-
 
 fifologger: fifologger.c
 

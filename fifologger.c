@@ -62,9 +62,11 @@
 /* Interval between forced fflush() of output file */
 #define OUT_SYNC_INTERVAL 2
 
-/* RCS version strings and stuff, to be used with in help text or when running
-   ident on the binary */
-static const char rcsid[] = "$Id$";
+/* Emulate RCS $Id$, simply because it's handy to be able to run ident
+      on an executable/library/etc and see the version.
+ */
+static const char rcsid[] = "$Id: " __FILE__ " " GIT_SOURCE_DESC " $";
+
 
 /* Global variables are sooo elegant ;-) */
 int detach = 1;
