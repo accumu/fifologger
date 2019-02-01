@@ -70,7 +70,7 @@ static const char rcsid[] = "$Id$";
 int detach = 1;
 int fifo = -1;
 char *fifoname = NULL;
-char *outformat = NULL;
+char *outnametemplate = NULL;
 int printerrors = 1;
 
 void
@@ -123,6 +123,7 @@ int
 writedata(char *ptr, ssize_t size) {
     time_t t;
     static FILE *outf = NULL;
+    static char outname[PATH_MAX];
     static time_t outflastflush = 0;
     static time_t outfclosetime = 0;
 
@@ -136,16 +137,16 @@ writedata(char *ptr, ssize_t size) {
 
     /* Open outfile if not already open */
     if(!outf) {
-        char buf[PATH_MAX+1];
         struct tm *tim = localtime(&t);
         struct tm hrtim;
 
-        strftime(buf, PATH_MAX, outformat, tim);
-        outf = fopen(buf, "a");
+        strftime(outname, PATH_MAX, outnametemplate, tim);
+        outf = fopen(outname, "a");
         if (!outf) {
-            error(LOG_CRIT, "Unable to open outfile %s", buf);
+            error(LOG_CRIT, "Unable to open outfile %s", outname);
             return 1;
         }
+	fprintf(stdout, "Opened outfile %s", outname);
 
         /* Figure out when it's time to close it (when the next hour starts) */
         memcpy(&hrtim, tim, sizeof(struct tm));
@@ -156,7 +157,7 @@ writedata(char *ptr, ssize_t size) {
 
     if(size > 0) {
 	if (fwrite(ptr, size, 1, outf) != 1) {
-	    error(LOG_CRIT, "Failed to write to outfile %s", outformat);
+	    error(LOG_CRIT, "Failed to write to outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
 	    return 2;
@@ -165,7 +166,7 @@ writedata(char *ptr, ssize_t size) {
 
     if(outflastflush+OUT_SYNC_INTERVAL < t) {
         if(fflush(outf) != 0) {
-	    error(LOG_CRIT, "Failed to flush outfile %s", outformat);
+	    error(LOG_CRIT, "Failed to flush outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
 	    return 3;
@@ -259,7 +260,7 @@ main(int argc, char *argv[]) {
 		break;
 	    default:
 		fprintf(stderr, "%s %s\n", argv[0], rcsid);
-		fprintf(stderr, "Usage: %s [-u username] [-d] [-v]  <fifo> <outformat>\n", argv[0]);
+		fprintf(stderr, "Usage: %s [-u username] [-d] [-v]  <fifo> <outnametemplate>\n", argv[0]);
 		fprintf(stderr, "          -u username - run as username\n");
 		fprintf(stderr, "          -D - Don't detach\n");
 		exit(0);
@@ -299,9 +300,9 @@ main(int argc, char *argv[]) {
     }
 
     fifoname = argv[optind];
-    outformat = argv[optind+1];
+    outnametemplate = argv[optind+1];
 
-    if(fifoname[0] != '/' || outformat[0] != '/') {
+    if(fifoname[0] != '/' || outnametemplate[0] != '/') {
 	fprintf(stderr, "FATAL: Expected absolute paths\n");
 	exit(1);
     }
