@@ -67,8 +67,7 @@
 static const char rcsid[] = "$Id$";
 
 /* Global variables are sooo elegant ;-) */
-int debug = 0;
-int verbose = 0;
+int detach = 1;
 int fifo = -1;
 char *fifoname = NULL;
 char *outformat = NULL;
@@ -250,23 +249,19 @@ main(int argc, char *argv[]) {
     char * runuser = NULL;
     int opt;
 
-    while ((opt = getopt(argc, argv, "u:dv")) != -1) {
+    while ((opt = getopt(argc, argv, "u:D")) != -1) {
 	switch (opt) {
 	    case 'u':
 		runuser = optarg;
 		break;
-	    case 'd':
-		debug = 1;
-		break;
-	    case 'v':
-		verbose = 1;
+	    case 'D':
+		detach = 0;
 		break;
 	    default:
 		fprintf(stderr, "%s %s\n", argv[0], rcsid);
 		fprintf(stderr, "Usage: %s [-u username] [-d] [-v]  <fifo> <outformat>\n", argv[0]);
 		fprintf(stderr, "          -u username - run as username\n");
-		fprintf(stderr, "          -d - debug/donotdetach\n");
-		fprintf(stderr, "          -v - verbose\n");
+		fprintf(stderr, "          -D - Don't detach\n");
 		exit(0);
 	}
     }
@@ -311,7 +306,7 @@ main(int argc, char *argv[]) {
 	exit(1);
     }
 
-    if(!debug) {
+    if(detach) {
 	if(daemon(0, 0) != 0) {
 	    perror("daemon() failed");
 	    exit(1);
@@ -344,7 +339,7 @@ main(int argc, char *argv[]) {
     }
 
     fifo = openfifo(fifoname);
-    if(!verbose) {
+    if(detach) {
 	printerrors = 0;
 	fclose(stdin);
 	fclose(stdout);
