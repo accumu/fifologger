@@ -269,6 +269,19 @@ main(int argc, char *argv[]) {
 	}
     }
 
+    if(argc != optind+2) {
+	fprintf(stderr, "FATAL: Expected exactly 2 arguments after options\n");
+	exit(1);
+    }
+
+    fifoname = argv[optind];
+    outnametemplate = argv[optind+1];
+
+    if(fifoname[0] != '/' || outnametemplate[0] != '/') {
+	fprintf(stderr, "FATAL: Expected absolute paths\n");
+	exit(1);
+    }
+
     if(geteuid() != 0) {
        if(runuser != NULL) {
 	   fprintf(stderr, "FATAL: Can only specify -u runuser if started as root\n");
@@ -294,19 +307,6 @@ main(int argc, char *argv[]) {
 	    perror("unable to drop privilege");
 	    exit(1);
 	}
-    }
-
-    if(argc != optind+2) {
-	fprintf(stderr, "FATAL: Expected exactly 2 arguments after options\n");
-	exit(1);
-    }
-
-    fifoname = argv[optind];
-    outnametemplate = argv[optind+1];
-
-    if(fifoname[0] != '/' || outnametemplate[0] != '/') {
-	fprintf(stderr, "FATAL: Expected absolute paths\n");
-	exit(1);
     }
 
     if(detach) {
