@@ -78,7 +78,7 @@ int printerrors = 1;
 void
 exithandler(int signum) {
     fflush(NULL);
-    exit(1);
+    exit(0);
 }
 
 void
