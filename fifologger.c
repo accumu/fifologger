@@ -73,7 +73,7 @@ int detach = 1;
 int fifo = -1;
 char *fifoname = NULL;
 char *outnametemplate = NULL;
-int printerrors = 1;
+int printmessages = 1;
 
 void
 exithandler(int signum) {
@@ -82,12 +82,12 @@ exithandler(int signum) {
 }
 
 void
-error(int lvl, char *str, char *arg) {
+message(int lvl, char *str, char *arg) {
     char buf[STRSIZE];
 
     snprintf(buf, STRSIZE, "[%%s] %s: errno=%s", str, strerror(errno));
     syslog(lvl, buf, fifoname, arg);
-    if (printerrors) {
+    if (printmessages) {
         strcat(buf, "\n");
         fprintf(stderr, buf, fifoname, arg);
     }
@@ -100,18 +100,18 @@ openfifo(char *name) {
 
     f = open(name, O_RDONLY|O_NONBLOCK);
     if (f < 0) {
-        error(LOG_ERR, "Unable to open input fifo %s", name);
+        message(LOG_ERR, "Unable to open input fifo %s", name);
         closelog();
         exit(1);
     }
     if(fstat(f, &st) < 0) {
-        error(LOG_ERR, "Unable to stat input fifo %s", name);
+        message(LOG_ERR, "Unable to stat input fifo %s", name);
 	close(f);
         closelog();
         exit(1);
     }
     if(!S_ISFIFO(st.st_mode)) {
-        error(LOG_ERR, "Opening input file %s: not a FIFO", name);
+        message(LOG_ERR, "Opening input file %s: not a FIFO", name);
 	close(f);
         closelog();
         exit(1);
@@ -145,10 +145,10 @@ writedata(char *ptr, ssize_t size) {
         strftime(outname, PATH_MAX, outnametemplate, tim);
         outf = fopen(outname, "a");
         if (!outf) {
-            error(LOG_CRIT, "Unable to open outfile %s", outname);
+            message(LOG_CRIT, "Unable to open outfile %s", outname);
             return 1;
         }
-	fprintf(stdout, "Opened outfile %s", outname);
+	message(LOG_INFO, "Opened outfile %s", outname);
 
         /* Figure out when it's time to close it (when the next hour starts) */
         memcpy(&hrtim, tim, sizeof(struct tm));
@@ -159,7 +159,7 @@ writedata(char *ptr, ssize_t size) {
 
     if(size > 0) {
 	if (fwrite(ptr, size, 1, outf) != 1) {
-	    error(LOG_CRIT, "Failed to write to outfile %s", outname);
+	    message(LOG_CRIT, "Failed to write to outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
 	    return 2;
@@ -168,7 +168,7 @@ writedata(char *ptr, ssize_t size) {
 
     if(outflastflush+OUT_SYNC_INTERVAL < t) {
         if(fflush(outf) != 0) {
-	    error(LOG_CRIT, "Failed to flush outfile %s", outname);
+	    message(LOG_CRIT, "Failed to flush outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
 	    return 3;
@@ -194,7 +194,7 @@ mainloop(void) {
 	rc = poll(&fds, 1, OUT_SYNC_INTERVAL*1000);
 	if(rc < 0) {
 	    /* Error/failure */
-	    error(LOG_ERR, "poll() %s", "failed");
+	    message(LOG_ERR, "poll() %s", "failed");
 	    fflush(NULL);
 	    closelog();
 	    exit(1);
@@ -222,7 +222,7 @@ mainloop(void) {
 	    else if(fds.revents & POLLNVAL) {
 		e = "POLLNVAL";
 	    }
-	    error(LOG_ERR, "poll() error: %s", e);
+	    message(LOG_ERR, "poll() error: %s", e);
 	    sleep(OUT_SYNC_INTERVAL); /* To avoid busy-error-looping */
 	    continue;
 	}
@@ -233,7 +233,7 @@ mainloop(void) {
 	    if(errno == EAGAIN || errno == EWOULDBLOCK) {
 		continue;
 	    }
-	    error(LOG_ERR, "read() %s", "failed");
+	    message(LOG_ERR, "read() %s", "failed");
 	    sleep(OUT_SYNC_INTERVAL); /* To avoid busy-error-looping */
 	    continue;
 	}
@@ -324,26 +324,25 @@ main(int argc, char *argv[]) {
     /* Trap some standard signals so we can fflush() the outfile on exit */
     sa.sa_handler = exithandler;
     if(sigaction(SIGHUP, &sa, NULL)) {
-        error(LOG_ERR, "sigaction() failed for %s", "SIGHUP");
-        perror("sigaction");
+        message(LOG_ERR, "sigaction() failed for %s", "SIGHUP");
         exit(1);
     }
     if(sigaction(SIGINT, &sa, NULL)) {
-        error(LOG_ERR, "sigaction() failed for %s", "SIGINT");
+        message(LOG_ERR, "sigaction() failed for %s", "SIGINT");
         exit(1);
     }
     if(sigaction(SIGTERM, &sa, NULL)) {
-        error(LOG_ERR, "sigaction() failed for %s", "SIGTERM");
+        message(LOG_ERR, "sigaction() failed for %s", "SIGTERM");
         exit(1);
     }
     if(sigaction(SIGQUIT, &sa, NULL)) {
-        error(LOG_ERR, "sigaction() failed for %s", "SIGQUIT");
+        message(LOG_ERR, "sigaction() failed for %s", "SIGQUIT");
         exit(1);
     }
 
     fifo = openfifo(fifoname);
     if(detach) {
-	printerrors = 0;
+	printmessages = 0;
 	fclose(stdin);
 	fclose(stdout);
 	fclose(stderr);
