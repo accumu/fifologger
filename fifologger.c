@@ -76,12 +76,6 @@ char *outnametemplate = NULL;
 int printmessages = 1;
 
 void
-exithandler(int signum) {
-    fflush(NULL);
-    exit(0);
-}
-
-void
 message(int lvl, char *str, char *arg) {
     char buf[STRSIZE];
 
@@ -91,6 +85,13 @@ message(int lvl, char *str, char *arg) {
         strcat(buf, "\n");
         fprintf(stderr, buf, fifoname, arg);
     }
+}
+
+void
+exithandler(int signum) {
+    message(LOG_NOTICE, "%s, flushing and exiting...", strsignal(signum));
+    fflush(NULL);
+    exit(0);
 }
 
 int
