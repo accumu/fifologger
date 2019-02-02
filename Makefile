@@ -19,7 +19,7 @@ uname := $(shell uname)
 
 ifeq ($(uname),Linux)
 	CC := gcc
-	CFLAGS := -g -O -Wall -DGIT_SOURCE_DESC='"$(shell git describe --tags --always --dirty)"'
+	CFLAGS := -g -O -Wall -Wextra -DGIT_SOURCE_DESC='"$(shell git describe --tags --always --dirty)"'
 
 else
 	CFLAGS := -g -O
