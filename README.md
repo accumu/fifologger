@@ -18,7 +18,7 @@ services/processes might even have a very long runtime making it impossible.
 * First argument must be a fifo writable by the service doing logging
   and readable by your chosen log handling user.
 * Second argument is the target file, formatted using strftime(3).
-* File is reopened hourly, so per-minute etc formats is useless.
+* File is checked for name change each minute.
 * When having many log files it makes sense to implement startup and
   sanity checking (paths, fifo, permissions, etc) in a script.
 

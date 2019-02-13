@@ -6,8 +6,8 @@
  * Reads input from a FIFO and writes it into a file specified with strftime(3)
  * syntax.
  *
- * Outfile is reopened hourly and fflush():ed at intervals determined by
- * OUT_SYNC_INTERVAL.
+ * Outfile is checked each minute if it needs to be reopened. 
+ * fflush() happens at intervals determined by OUT_SYNC_INTERVAL.
  *
  * Suitable format: xferlog.%Y%m%d  (xferlog-20011027)
  *
@@ -128,41 +128,48 @@ writedata(char *ptr, ssize_t size) {
     static FILE *outf = NULL;
     static char outname[PATH_MAX];
     static time_t outflastflush = 0;
-    static time_t outfclosetime = 0;
+    static time_t outfchecktime = 0;
 
     t = time(NULL);
 
-    /* Close outfile if it has been open too long */
-    if( outf && t>=outfclosetime) {
-        fclose(outf);
-        outf=NULL;
+    /* Investigate if we need to reopen outfile */
+    if(!outf || (outf && t>=outfchecktime) ) {
+	char newname[PATH_MAX];
+	struct tm *tim = localtime(&t);
+
+        strftime(newname, PATH_MAX, outnametemplate, tim);
+	if(outf && !strcmp(outname, newname)) {
+	    fclose(outf);
+	    outf=NULL;
+	    outname[0] = '\0';
+	}
+
+	/* Open outfile if not already open */
+	if(!outf) {
+	    struct tm hrtim;
+
+	    outf = fopen(newname, "a");
+	    if (!outf) {
+		message(LOG_CRIT, "Unable to open outfile %s", newname);
+		return 1;
+	    }
+	    strcpy(outname, newname);
+	    message(LOG_INFO, "Opened outfile %s", outname);
+
+	    /* Figure out when next check for outfile name change is */
+	    memcpy(&hrtim, tim, sizeof(struct tm));
+	    hrtim.tm_sec=0;
+	    outfchecktime = mktime(&hrtim)+60;
+	}
     }
 
-    /* Open outfile if not already open */
-    if(!outf) {
-        struct tm *tim = localtime(&t);
-        struct tm hrtim;
-
-        strftime(outname, PATH_MAX, outnametemplate, tim);
-        outf = fopen(outname, "a");
-        if (!outf) {
-            message(LOG_CRIT, "Unable to open outfile %s", outname);
-            return 1;
-        }
-	message(LOG_INFO, "Opened outfile %s", outname);
-
-        /* Figure out when it's time to close it (when the next hour starts) */
-        memcpy(&hrtim, tim, sizeof(struct tm));
-        hrtim.tm_sec=0;
-        hrtim.tm_min=0;
-        outfclosetime = mktime(&hrtim)+3600;
-    }
 
     if(size > 0) {
 	if (fwrite(ptr, size, 1, outf) != 1) {
 	    message(LOG_CRIT, "Failed to write to outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
+	    outname[0] = '\0';
 	    return 2;
 	}
     }
@@ -172,6 +179,7 @@ writedata(char *ptr, ssize_t size) {
 	    message(LOG_CRIT, "Failed to flush outfile %s", outname);
 	    fclose(outf);
 	    outf=NULL;
+	    outname[0] = '\0';
 	    return 3;
 	}
         outflastflush=t;
