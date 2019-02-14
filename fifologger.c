@@ -79,7 +79,12 @@ void
 message(int lvl, char *str, char *arg) {
     char buf[STRSIZE];
 
-    snprintf(buf, STRSIZE, "[%%s] %s: errno=%s", str, strerror(errno));
+    if(errno) {
+	snprintf(buf, STRSIZE, "[%%s] %s: %s", str, strerror(errno));
+    }
+    else {
+	snprintf(buf, STRSIZE, "[%%s] %s", str);
+    }
     syslog(lvl, buf, fifoname, arg);
     if (printmessages) {
         strcat(buf, "\n");
@@ -148,6 +153,7 @@ writedata(char *ptr, ssize_t size) {
 	if(!outf) {
 	    struct tm hrtim;
 
+	    errno = 0; /* Clear out errno for our message function */
 	    outf = fopen(newname, "a");
 	    if (!outf) {
 		message(LOG_CRIT, "Unable to open outfile %s", newname);
