@@ -138,7 +138,7 @@ writedata(char *ptr, ssize_t size) {
 	struct tm *tim = localtime(&t);
 
         strftime(newname, PATH_MAX, outnametemplate, tim);
-	if(outf && !strcmp(outname, newname)) {
+	if(outf && strcmp(outname, newname)) {
 	    fclose(outf);
 	    outf=NULL;
 	    outname[0] = '\0';
