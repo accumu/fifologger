@@ -94,6 +94,7 @@ message(int lvl, char *str, char *arg) {
 
 void
 exithandler(int signum) {
+    errno = 0; /* Clear out errno for our message function */
     message(LOG_NOTICE, "%s, flushing and exiting...", strsignal(signum));
     fflush(NULL);
     exit(0);
