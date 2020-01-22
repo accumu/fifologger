@@ -56,11 +56,14 @@
 #include <pwd.h>
 #include <grp.h>
 
-
+/* String buffer size */
 #define STRSIZE 32768
 
 /* Interval between forced fflush() of output file */
 #define OUT_SYNC_INTERVAL 2
+
+/* Suppress identical errors for this many seconds */
+#define ERR_SUPPRESS_TIME 60
 
 /* Emulate RCS $Id$, simply because it's handy to be able to run ident
       on an executable/library/etc and see the version.
@@ -78,8 +81,16 @@ int printmessages = 1;
 void
 message(int lvl, char *str, char *arg) {
     char buf[STRSIZE];
+    static int lasterrno=0;
+    static time_t lasttime=0;
 
     if(errno) {
+	time_t now=time(NULL);
+	if(now < lasttime + ERR_SUPPRESS_TIME && errno == lasterrno) {
+		return;
+	}
+	lasttime=now;
+	lasterrno=errno;
 	snprintf(buf, STRSIZE, "[%%s] %s: %s", str, strerror(errno));
     }
     else {
