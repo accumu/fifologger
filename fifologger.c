@@ -172,7 +172,11 @@ writedata(char *ptr, ssize_t size) {
 		return 1;
 	    }
 	    strcpy(outname, newname);
-	    message(LOG_INFO, "Opened outfile %s", outname);
+
+	    /* Try to only emit message if we open a new file */
+	    if(ftell(outf) == 0) {
+		message(LOG_INFO, "Opened outfile %s", outname);
+	    }
 
 	    /* Figure out when next check for outfile name change is */
 	    memcpy(&hrtim, tim, sizeof(struct tm));
